@@ -63,5 +63,6 @@ urlpatterns = [
     path('history/', views.history),
     path('webhook/', views.webhook),
     path('cancel-subscription/', views.cancel_subscription),
+    path('create-product', views.create_product, name='create-product'),   
 
 ]

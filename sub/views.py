@@ -2,12 +2,15 @@ import stripe
 from django.conf import settings
 from django.views import View
 from django.http import JsonResponse
-from django.shortcuts import redirect
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 from django.views.decorators.csrf import csrf_exempt
 import datetime
-
+import stripe
+from django.conf import settings
+from django.shortcuts import render, redirect
+from .form import ProductForm
+from .models import Product
 # Create your views here.
 # stripe API key
 stripe.api_key = 'sk_test_51MmEURSCqNOD6uDi2mQxr1hwCSu7AVI4A3bYetbnmg6JKwqlPcTo7b0CZAn7snyKMNjxkbKa0H6e3p7KK1Cygdn500g53jMfBT'
@@ -125,3 +128,34 @@ class subscription(View):
         )
         subscription.delete()
         return JsonResponse(subscription)
+    
+
+
+
+    def create_product(request):
+        form = ProductForm(request.POST)
+        if form.is_valid():
+            product = form.save(commit=False)
+            stripe_product = stripe.Product.create(
+                name=product.name,
+                description=product.description
+            )
+            stripe_price = stripe.Price.create(
+                product=stripe_product.id,
+                unit_amount=int(product.price * 100),
+                currency='usd',
+                recurring={
+                    'interval': product.interval,
+                    'interval_count': product.interval_count,
+                    'trial_period_days': product.trial_period_days
+                }
+            )
+            product.stripe_product_id = stripe_product.id
+            product.stripe_price_id = stripe_price.id
+            product.save()
+            return redirect('product_list')
+        return render(request, 'create_product.html', {'form': form})
+    
+    def product_list(request):
+        products = Product.objects.all()
+        return render(request, 'product_list.html', {'products': products})
